@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستم جامع تحلیل و معامله‌گری هوشمند بازارهای مالی ایران</title>
+    
+    <!-- Meta Tags برای SEO -->
+    <meta name="description" content="پیشرفته‌ترین سیستم تحلیل بازارهای مالی ایران با هوش مصنوعی، تریدینگ الگوریتمی و گزارش‌گیری حرفه‌ای">
+    <meta name="keywords" content="بورس تهران, ارز دیجیتال, طلا, تحلیل تکنیکال, هوش مصنوعی, معامله‌گری الگوریتمی">
+    <meta name="author" content="Financial Intelligence System">
+    
+    <!-- CDN ها -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.0/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    
+    <!-- استایل‌های اختصاصی -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- Structured Data برای SEO -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "سیستم هوشمند تحلیل بازارهای مالی",
+        "description": "پلتفرم پیشرفته تحلیل، معامله‌گری و مدیریت ریسک در بازارهای مالی ایران",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web Browser"
+    }
+    </script>
+</head>
+<body>
+    <!-- Loading Screen پیشرفته -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3>🚀 در حال بارگذاری سیستم تحلیل مالی پیشرفته</h3>
+            <p>لطفاً چند لحظه صبر کنید...</p>
+            <div class="loading-progress">
+                <div class="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Bar پیشرفته -->
+    <nav class="main-nav" id="mainNav">
+        <div class="nav-brand">
+            <span class="logo">🎯</span>
+            <span class="brand-text">سامانه تحلیل هوشمند</span>
+        </div>
+        
+        <div class="nav-center">
+            <div class="market-status">
+                <span class="status-item" id="marketStatus">بازار: باز</span>
+                <span class="status-item" id="connectionStatus">اتصال: فعال</span>
+            </div>
+        </div>
+        
+        <div class="nav-actions">
+            <button class="nav-btn" id="themeToggle" title="تغییر تم">🌙</button>
+            <button class="nav-btn" id="notificationBtn" title="اعلانات">🔔</button>
+            <button class="nav-btn" id="fullscreenBtn" title="تمام صفحه">⛶</button>
+            <button class="nav-btn" id="settingsBtn" title="تنظیمات">⚙️</button>
+        </div>
+    </nav>
+
+    <!-- Main App Container -->
+    <div class="app-container">
+        <!-- Sidebar پیشرفته -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h3>📊 کنترل مرکزی</h3>
+                <button class="sidebar-toggle" id="sidebarToggle">✕</button>
+            </div>
+            
+            <div class="sidebar-content">
+                <!-- بخش وضعیت API ها -->
+                <div class="sidebar-section">
+                    <h4>🔗 وضعیت اتصال API ها</h4>
+                    <div id="apiStatusContainer">
+                        <div class="loading">در حال بررسی...</div>
+                    </div>
+                    <div class="connection-stats">
+                        <div class="stat-item">
+                            <div class="stat-value" id="connectedCount">0</div>
+                            <div class="stat-label">متصل</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="disconnectedCount">0</div>
+                            <div class="stat-label">قطع</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="totalCount">0</div>
+                            <div class="stat-label">کل</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- بخش مدل‌های هوش مصنوعی -->
+                <div class="sidebar-section">
+                    <h4>🤖 وضعیت مدل‌های AI</h4>
+                    <div class="model-status active">
+                        <span>AdvancedDecisionExplainer</span>
+                        <span class="status-indicator status-connected"></span>
+                    </div>
+                    <div class="model-status active">
+                        <span>MarketSentimentTransformer</span>
+                        <span class="status-indicator status-connected"></span>
+                    </div>
+                    <div class="model-status active">
+                        <span>PricePredictionTransformer</span>
+                        <span class="status-indicator status-connected"></span>
+                    </div>
+                    <div class="model-status active">
+                        <span>RiskAssessorAgent</span>
+                        <span class="status-indicator status-connected"></span>
+                    </div>
+                </div>
+
+                <!-- بخش اندیکاتورهای فنی -->
+                <div class="sidebar-section">
+                    <h4>📈 اندیکاتورهای فنی</h4>
+                    <div class="technical-indicators" id="technicalIndicators">
+                        <div class="loading">در حال محاسبه...</div>
+                    </div>
+                </div>
+
+                <!-- بخش معیارهای ریسک -->
+                <div class="sidebar-section">
+                    <h4>⚠️ معیارهای ریسک</h4>
+                    <div class="risk-metrics" id="riskMetrics">
+                        <div class="loading">در حال محاسبه...</div>
+                    </div>
+                </div>
+
+                <!-- بخش امنیت سیستم -->
+                <div class="sidebar-section">
+                    <h4>🛡️ امنیت سیستم</h4>
+                    <div class="encrypted-indicator">
+                        <span>🔒</span>
+                        <span>تمامی داده‌ها رمزنگاری شده</span>
+                    </div>
+                    <div class="performance-meter">
+                        <div class="performance-fill" id="performanceMeter" style="width: 95%; background: var(--success);"></div>
+                    </div>
+                    <small>عملکرد سیستم: <span id="performanceText">عالی</span></small>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="mainContent">
+            <div class="container">
+                <!-- Header اصلی -->
+                <header class="main-header">
+                    <h1>سیستم جامع تحلیل و معامله‌گری بازارهای مالی ایران</h1>
+                    <p class="subtitle">تحلیل یکپارچه بورس، ارز دیجیتال، طلا و ارز با نظارت هوشمند API و هوش مصنوعی</p>
+                    <div class="header-badges">
+                        <span class="security-badge security-high">امنیت بالا</span>
+                        <span class="security-badge security-high">داده‌های زنده</span>
+                        <span class="security-badge security-medium">هوش مصنوعی فعال</span>
+                        <span class="security-badge security-low">نسخه پیشرفته</span>
+                    </div>
+                </header>
+
+                <!-- Controls پیشرفته -->
+                <div class="controls">
+                    <div class="control-group">
+                        <select id="marketType">
+                            <option value="all">همه بازارها</option>
+                            <option value="stock">بورس اوراق بهادار</option>
+                            <option value="crypto">ارز دیجیتال</option>
+                            <option value="gold">طلا و سکه</option>
+                            <option value="currency">ارز</option>
+                            <option value="commodity">کامودیتی</option>
+                        </select>
+                        
+                        <select id="timeFrame">
+                            <option value="1d">۱ روز</option>
+                            <option value="1w">۱ هفته</option>
+                            <option value="1m">۱ ماه</option>
+                            <option value="3m">۳ ماه</option>
+                            <option value="1y">۱ سال</option>
+                            <option value="all">تمام تاریخ</option>
+                        </select>
+                        
+                        <button id="refreshBtn" class="btn-primary">
+                            <span>🔄</span> بروزرسانی داده‌ها
+                        </button>
+                    </div>
+                    
+                    <div class="control-group">
+                        <button id="analyzeBtn" class="btn-success">
+                            <span>🤖</span> تحلیل هوش مصنوعی
+                        </button>
+                        <button id="riskBtn" class="btn-warning">
+                            <span>⚠️</span> ارزیابی ریسک
+                        </button>
+                        <button id="tradeBtn" class="btn-info">
+                            <span>💼</span> پیشنهاد معامله
+                        </button>
+                        <button id="monitorBtn" class="btn-secondary">
+                            <span>🔍</span> تست اتصال API ها
+                        </button>
+                        <button id="securityBtn" class="btn-danger">
+                            <span>🛡️</span> تست امنیت
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Container پیشرفته -->
+                <div class="tab-container">
+                    <div class="tabs">
+                        <div class="tab active" data-tab="dashboard">📊 داشبورد اصلی</div>
+                        <div class="tab" data-tab="analysis">🔍 تحلیل پیشرفته</div>
+                        <div class="tab" data-tab="explanations">🧠 توضیح‌پذیری AI</div>
+                        <div class="tab" data-tab="trading">💼 معاملات هوشمند</div>
+                        <div class="tab" data-tab="reports">📈 گزارش‌های حرفه‌ای</div>
+                        <div class="tab" data-tab="transformer">🤖 مدل‌های Transformer</div>
+                        <div class="tab" data-tab="monitoring">📡 نظارت API</div>
+                        <div class="tab" data-tab="security">🛡️ امنیت و نظارت</div>
+                        <div class="tab" data-tab="feature-importance">🎯 تحلیل اهمیت ویژگی‌ها</div>
+                        <div class="tab" data-tab="model-interpretability">🔬 قابلیت تفسیر مدل</div>
+                        <div class="tab" data-tab="advanced-sentiment">📊 تحلیل احساسات پیشرفته</div>
+                        <div class="tab" data-tab="portfolio-management">💰 مدیریت پرتفوی</div>
+                        <div class="tab" data-tab="backtesting">📊 بک‌تستینگ</div>
+                        <div class="tab" data-tab="real-time">⚡ داده‌های لحظه‌ای</div>
+                    </div>
+                    
+                    <!-- محتوای تب‌ها -->
+                    
+                    <!-- تب داشبورد اصلی -->
+                    <div class="tab-content active" id="dashboard-tab">
+                        <div class="dashboard-grid">
+                            <div class="card">
+                                <h2>📈 وضعیت بازارها</h2>
+                                <div class="market-grid" id="marketStatus">
+                                    <div class="loading">در حال بارگذاری داده‌های بازار...</div>
+                                </div>
+                            </div>
+                            
+                            <div class="card">
+                                <h2>📊 شاخص‌های کلان</h2>
+                                <div id="indicesChart" class="chart-container"></div>
+                            </div>
+                            
+                            <div class="card">
+                                <h2>💰 تحلیل قیمت و روند</h2>
+                                <div id="priceChart" class="chart-container"></div>
+                            </div>
+                            
+                            <div class="card">
+                                <h2>🔗 وضعیت اتصال API ها</h2>
+                                <div id="connectionChart" class="chart-container"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="card analysis-section">
+                            <h2>🧠 تحلیل هوش مصنوعی و پیشنهادات معاملاتی</h2>
+                            <div class="analysis-grid" id="aiAnalysis">
+                                <div class="loading">برای مشاهده تحلیل‌ها، دکمه "تحلیل هوش مصنوعی" را بفشارید</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- تب تحلیل پیشرفته -->
+                    <div class="tab-content" id="analysis-tab">
+                        <div class="card">
+                            <h2>🔍 تحلیل پیشرفته بازار</h2>
+                            <div class="feature-grid">
+                                <div class="feature-item">
+                                    <div class="feature-icon">📊</div>
+                                    <h3>تحلیل تکنیکال پیشرفته</h3>
+                                    <p>اندیکاتورهای پیشرفته و سیگنال‌های معاملاتی با دقت بالا</p>
+                                    <button class="btn-outline" onclick="runTechnicalAnalysis()">اجرا</button>
+                                </div>
+                                <div class="feature-item">
+                                    <div class="feature-icon">📈</div>
+                                    <h3>تحلیل بنیادی جامع</h3>
+                                    <p>ارزیابی ارزش ذاتی و پتانسیل رشد با معیارهای چندبعدی</p>
+                                    <button class="btn-outline" onclick="runFundamentalAnalysis()">اجرا</button>
+                                </div>
+                                <div class="feature-item">
+                                    <div class="feature-icon">🧠</div>
+                                    <h3>هوش مصنوعی پیشرفته</h3>
+                                    <p>پیش‌بینی روند با مدل‌های Transformer و شبکه‌های عصبی</p>
+                                    <button class="btn-outline" onclick="runAIAnalysis()">اجرا</button>
+                                </div>
+                                <div class="feature-item">
+                                    <div class="feature-icon">📉</div>
+                                    <h3>تحلیل احساسات بازار</h3>
+                                    <p>بررسی جو بازار و تأثیر اخبار با پردازش زبان طبیعی</p>
+                                    <button class="btn-outline" onclick="runSentimentAnalysis()">اجرا</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h2>📋 گزارش تحلیل بازار</h2>
+                            <div id="advancedAnalysis" class="analysis-grid">
+                                <div class="loading">در حال محاسبه تحلیل‌های پیشرفته...</div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h2>🎯 تحلیل ویژگی‌های مهم</h2>
+                            <div id="featureImportanceChart" class="chart-container"></div>
+                        </div>
+                    </div>
+
+                    <!-- بقیه تب‌ها به همین صورت ادامه دارند -->
+                    <!-- به دلیل محدودیت طول، محتوای کامل همه تب‌ها در فایل جداگانه ارائه می‌شود -->
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Center -->
+    <div class="notification-center" id="notificationCenter"></div>
+
+    <!-- Modal برای تنظیمات -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>⚙️ تنظیمات سیستم</h3>
+                <button class="modal-close" id="closeSettings">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- محتوای تنظیمات -->
+            </div>
+        </div>
+    </div>
+
+    <!-- فایل‌های JavaScript -->
+    <script src="js/config/app.config.js"></script>
+    <script src="js/services/security.service.js"></script>
+    <script src="js/services/api.service.js"></script>
+    <script src="js/services/cache.service.js"></script>
+    <script src="js/services/storage.service.js"></script>
+    <script src="js/managers/error.manager.js"></script>
+    <script src="js/managers/performance.manager.js"></script>
+    <script src="js/managers/ui.manager.js"></script>
+    <script src="js/managers/data.manager.js"></script>
+    <script src="js/ai/models/trading.model.js"></script>
+    <script src="js/ai/models/analysis.model.js"></script>
+    <script src="js/ai/models/risk.model.js"></script>
+    <script src="js/ai/engines/trading.engine.js"></script>
+    <script src="js/ai/engines/reporting.engine.js"></script>
+    <script src="js/ai/engines/prediction.engine.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
