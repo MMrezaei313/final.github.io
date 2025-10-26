@@ -411,5 +411,358 @@ class AdvancedAPIService {
         return typeof response.data === 'object' && Object.keys(response.data).length > 0;
     }
 
-    // بقیه متدها به دلیل محدودیت طول ادامه دارند...
+       // ادامه متدهای AdvancedAPIService
+
+    handleRequestError(error, url) {
+        this.retryCount++;
+        
+        const errorInfo = {
+            message: error.message,
+            code: error.code,
+            url: url,
+            timestamp: new Date().toISOString(),
+            retryCount: this.retryCount,
+            status: error.response?.status
+        };
+
+        // لاگ خطا
+        this.securityService.logSecurityEvent('API_REQUEST_ERROR', errorInfo);
+        this.log(`خطای API: ${error.message}`, 'error');
+
+        // تصمیم‌گیری برای تلاش مجدد
+        if (this.shouldRetry(error) && this.retryCount <= this.config.RETRY_ATTEMPTS) {
+            const delay = this.calculateRetryDelay(this.retryCount);
+            this.log(`تلاش مجدد در ${delay}ms (${this.retryCount}/${this.config.RETRY_ATTEMPTS})`, 'warning');
+            
+            return new Promise(resolve => 
+                setTimeout(() => resolve(this.retryRequest(url)), delay)
+            );
+        }
+
+        // بازنشانی شمارنده
+        this.retryCount = 0;
+        
+        // ایجاد خطای کاربرپسند
+        const userFriendlyError = this.createUserFriendlyError(error);
+        return Promise.reject(userFriendlyError);
+    }
+
+    shouldRetry(error) {
+        // خطاهایی که قابل تلاش مجدد هستند
+        const retryableErrors = [
+            'ETIMEDOUT',
+            'ECONNRESET', 
+            'ECONNREFUSED',
+            'ENOTFOUND',
+            'NETWORK_ERROR'
+        ];
+        
+        const statusCodes = [500, 502, 503, 504]; // خطاهای سرور
+        
+        return retryableErrors.includes(error.code) || 
+               statusCodes.includes(error.response?.status);
+    }
+
+    calculateRetryDelay(retryCount) {
+        // Exponential backoff با jitter
+        const baseDelay = 1000; // 1 ثانیه
+        const maxDelay = 30000; // 30 ثانیه
+        const exponentialDelay = Math.min(baseDelay * Math.pow(2, retryCount), maxDelay);
+        const jitter = Math.random() * 1000; // 1 ثانیه jitter
+        
+        return exponentialDelay + jitter;
+    }
+
+    async retryRequest(url) {
+        this.log(`تلاش مجدد برای: ${url}`, 'info');
+        return this.executeRequest(url, { timeout: this.config.TIMEOUT });
+    }
+
+    createUserFriendlyError(error) {
+        const errorMap = {
+            'ETIMEDOUT': 'زمان اتصال به سرور به پایان رسید',
+            'ECONNREFUSED': 'اتصال به سرور رد شد',
+            'ENOTFOUND': 'سرور یافت نشد',
+            'NETWORK_ERROR': 'خطای شبکه رخ داده است',
+            '404': 'منبع درخواستی یافت نشد',
+            '500': 'خطای داخلی سرور',
+            '503': 'سرور موقتاً در دسترس نیست'
+        };
+
+        const userMessage = errorMap[error.code] || 
+                           errorMap[error.response?.status] || 
+                           'خطای ناشناخته در دریافت داده';
+
+        return new Error(userMessage);
+    }
+
+    checkRateLimit() {
+        const now = Date.now();
+        const timeSinceReset = now - this.rateLimit.lastReset;
+        
+        if (timeSinceReset > this.rateLimit.resetInterval) {
+            this.rateLimit.requests = 0;
+            this.rateLimit.lastReset = now;
+        }
+        
+        return this.rateLimit.requests < this.config.RATE_LIMIT;
+    }
+
+    checkConnectivity() {
+        // بررسی ساده اتصال اینترنت
+        fetch('https://www.google.com/favicon.ico', { 
+            mode: 'no-cors',
+            cache: 'no-cache'
+        })
+        .then(() => {
+            if (!this.isOnline) {
+                this.isOnline = true;
+                this.log('اتصال اینترنت برقرار شد', 'success');
+            }
+        })
+        .catch(() => {
+            if (this.isOnline) {
+                this.isOnline = false;
+                this.log('اتصال اینترنت قطع شد', 'warning');
+            }
+        });
+    }
+
+    async processQueuedRequests() {
+        if (this.requestQueue.size > 0) {
+            this.log(`پردازش ${this.requestQueue.size} درخواست در صف`, 'info');
+            
+            for (const [url, promise] of this.requestQueue.entries()) {
+                try {
+                    await promise;
+                } catch (error) {
+                    console.warn(`خطا در پردازش درخواست صف: ${error.message}`);
+                }
+            }
+        }
+    }
+
+    generateRequestId() {
+        return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    generateSignature(config) {
+        // ایجاد امضای امنیتی برای درخواست‌ها
+        const timestamp = Date.now();
+        const data = `${config.url}${timestamp}${this.securityService.getApiKey()}`;
+        return CryptoJS.SHA256(data).toString();
+    }
+
+    getFallbackData(type) {
+        const fallbackGenerators = {
+            'STOCK_SYMBOLS': this.generateMockStocks.bind(this),
+            'STOCK_INDEX': this.generateMockIndices.bind(this),
+            'FARABOURSE_INDEX': this.generateMockIndices.bind(this),
+            'CRYPTO': this.generateMockCrypto.bind(this),
+            'GOLD': this.generateMockGold.bind(this),
+            'CURRENCY': this.generateMockCurrency.bind(this),
+            'COMMODITY_METALS': this.generateMockCommodities.bind(this)
+        };
+
+        const data = fallbackGenerators[type] ? fallbackGenerators[type]() : [];
+        this.log(`استفاده از داده‌های نمونه برای: ${type}`, 'warning');
+        
+        return data;
+    }
+
+    generateMockStocks() {
+        const symbols = [
+            'شتران', 'فولاد', 'خساپا', 'وبصادر', 'شپنا', 
+            'کگل', 'فملی', 'وتجارت', 'خپارس', 'برکت',
+            'شبندر', 'غگل', 'غالبر', 'فخوز', 'وبملت',
+            'کچاد', 'شستا', 'فاسمین', 'خکار', 'غدشت'
+        ];
+        
+        return symbols.map((symbol, index) => ({
+            symbol: symbol,
+            name: `شرکت ${symbol}`,
+            price: Math.floor(Math.random() * 50000) + 10000,
+            change: (Math.random() * 2000) - 1000,
+            changePercent: (Math.random() * 10) - 5,
+            volume: Math.floor(Math.random() * 10000000),
+            value: Math.floor(Math.random() * 500000000000),
+            high: Math.floor(Math.random() * 60000) + 10000,
+            low: Math.floor(Math.random() * 40000) + 5000,
+            open: Math.floor(Math.random() * 45000) + 11000,
+            previousClose: Math.floor(Math.random() * 45000) + 11000,
+            eps: Math.floor(Math.random() * 2000) + 500,
+            pe: (Math.random() * 10) + 3,
+            marketCap: Math.floor(Math.random() * 10000000000000),
+            tradeCount: Math.floor(Math.random() * 10000),
+            buyers: {
+                individual: Math.floor(Math.random() * 1000),
+                institutional: Math.floor(Math.random() * 50),
+                volume: Math.floor(Math.random() * 5000000)
+            },
+            sellers: {
+                individual: Math.floor(Math.random() * 800),
+                institutional: Math.floor(Math.random() * 30),
+                volume: Math.floor(Math.random() * 4000000)
+            },
+            timestamp: new Date(),
+            source: 'mock',
+            validated: false
+        }));
+    }
+
+    generateMockIndices() {
+        const indices = [
+            'شاخص کل', 'شاخص هم وزن', 'شاخص کل هم وزن', 
+            'شاخص صنعت', 'شاخص مالی', 'شاخص فرابورس'
+        ];
+        
+        return indices.map(name => ({
+            name: name,
+            value: Math.floor(Math.random() * 5000000) + 2000000,
+            change: (Math.random() * 50000) - 25000,
+            changePercent: (Math.random() * 5) - 2.5,
+            high: Math.floor(Math.random() * 6000000) + 2000000,
+            low: Math.floor(Math.random() * 4000000) + 1000000,
+            marketValue: Math.floor(Math.random() * 1000000000000000),
+            tradeVolume: Math.floor(Math.random() * 1000000000),
+            tradeValue: Math.floor(Math.random() * 5000000000000),
+            state: 'بسته',
+            timestamp: new Date()
+        }));
+    }
+
+    generateMockCrypto() {
+        const cryptos = [
+            'بیت‌کوین', 'اتریوم', 'ریپل', 'کاردانو', 'سولانا',
+            'دوج‌کوین', 'پolkadot', 'لایت‌کوین', 'ترون', 'چین لینک'
+        ];
+        
+        return cryptos.map((name, index) => ({
+            name: name,
+            symbol: name.replace(/\s/g, '').toUpperCase(),
+            price: Math.floor(Math.random() * 50000) + 20000,
+            priceToman: Math.floor(Math.random() * 5000000000) + 2000000000,
+            changePercent: (Math.random() * 15) - 7.5,
+            marketCap: Math.floor(Math.random() * 1000000000000) + 500000000000,
+            icon: `https://s2.coinmarketcap.com/static/img/coins/64x64/${index + 1}.png`,
+            timestamp: new Date(),
+            source: 'mock',
+            rank: index + 1
+        }));
+    }
+
+    generateMockGold() {
+        const goldItems = [
+            'سکه امامی', 'سکه بهار آزادی', 'نیم سکه', 'ربع سکه', 'طلای 18 عیار'
+        ];
+        
+        return goldItems.map(name => ({
+            symbol: name.replace(/\s/g, '_'),
+            name: name,
+            nameEn: name.replace('سکه', 'Coin').replace('طلای', 'Gold'),
+            price: Math.floor(Math.random() * 50000000) + 50000000,
+            change: (Math.random() * 2000000) - 1000000,
+            changePercent: (Math.random() * 8) - 4,
+            unit: 'تومان',
+            timestamp: new Date(),
+            source: 'mock'
+        }));
+    }
+
+    generateMockCurrency() {
+        const currencies = [
+            'دلار', 'یورو', 'پوند', 'درهم', 'ین', 'فرانک'
+        ];
+        
+        return currencies.map(name => ({
+            symbol: name,
+            name: name,
+            price: Math.floor(Math.random() * 50000) + 10000,
+            change: (Math.random() * 1000) - 500,
+            changePercent: (Math.random() * 6) - 3,
+            unit: 'تومان',
+            timestamp: new Date(),
+            source: 'mock'
+        }));
+    }
+
+    generateMockCommodities() {
+        const commodities = [
+            'نفت برنت', 'طلای جهانی', 'نقره', 'مس', 'آلومینیوم', 'روی'
+        ];
+        
+        return commodities.map(name => ({
+            symbol: name.replace(/\s/g, '_'),
+            name: name,
+            price: Math.floor(Math.random() * 200) + 50,
+            change: (Math.random() * 10) - 5,
+            changePercent: (Math.random() * 8) - 4,
+            unit: 'دلار',
+            timestamp: new Date(),
+            source: 'mock'
+        }));
+    }
+
+    warmupCache() {
+        // پیش‌بارگذاری داده‌های مهم در کش
+        const importantEndpoints = ['STOCK_SYMBOLS', 'STOCK_INDEX', 'CRYPTO'];
+        
+        setTimeout(() => {
+            importantEndpoints.forEach(endpoint => {
+                this.fetchMarketData(endpoint, { useCache: true })
+                    .then(() => this.log(`پیش‌بارگذاری ${endpoint} انجام شد`, 'info'))
+                    .catch(error => console.warn(`خطا در پیش‌بارگذاری ${endpoint}:`, error));
+            });
+        }, 5000);
+    }
+
+    log(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString('fa-IR');
+        const styles = {
+            info: 'color: blue;',
+            success: 'color: green;',
+            warning: 'color: orange;',
+            error: 'color: red;'
+        };
+        
+        console.log(`%c[${timestamp}] ${message}`, styles[type] || 'color: black;');
+        
+        // ارسال به UI اگر لازم باشد
+        if (type === 'error' || type === 'warning') {
+            this.notifyUI(message, type);
+        }
+    }
+
+    notifyUI(message, type) {
+        // ارسال نوتیفیکیشن به رابط کاربری
+        if (window.UIManager && window.UIManager.showNotification) {
+            window.UIManager.showNotification(message, type);
+        }
+    }
+
+    // متدهای کمکی برای مدیریت درخواست‌ها
+    getActiveRequestsCount() {
+        return this.activeRequests;
+    }
+
+    getQueueSize() {
+        return this.requestQueue.size;
+    }
+
+    clearCache() {
+        this.cacheService.clear();
+        this.log('کش سیستم پاک شد', 'info');
+    }
+
+    getPerformanceMetrics() {
+        return {
+            activeRequests: this.activeRequests,
+            queueSize: this.requestQueue.size,
+            retryCount: this.retryCount,
+            rateLimit: this.rateLimit,
+            isOnline: this.isOnline,
+            cacheSize: this.cacheService.getSize()
+        };
+    }
+}
 }
